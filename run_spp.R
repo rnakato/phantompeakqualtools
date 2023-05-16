@@ -1,4 +1,3 @@
-#!/usr/bin/env Rscript
 # run_spp.R
 # =============
 # Author: Anshul Kundaje, Computer Science Dept., MIT
@@ -28,7 +27,7 @@
 #      format:Filename<tab>numReads<tab>estFragLen<tab>corr_estFragLen<tab>PhantomPeak<tab>corr_phantomPeak<tab>argmin_corr<tab>min_corr<tab>Normalized SCC (NSC)<tab>Relative SCC (RSC)<tab>QualityTag
 # -rf , if plot or rdata or narrowPeak file exists replace it. If not used then the run is aborted if the plot or Rdata or narrowPeak file exists
 # -clean, if present will remove the original chip and control files after reading them in. CAUTION: Use only if the script calling run_spp.R is creating temporary files
-library(caTools)
+
 args <- commandArgs(trailingOnly=TRUE); # Read Arguments from command line
 nargs = length(args); # number of arguments
 
@@ -536,10 +535,6 @@ check.replace.flag <- function(params){
 # MAIN FUNCTION
 # #############################################################################
 
-# Load SPP library
-library(spp)
-library(caTools)
-
 # Check number of arguments
 minargs = 1;
 maxargs = 17;
@@ -651,6 +646,9 @@ if (! is.na(iparams$control.file)) {
 	}
 }
 
+# Load SPP library
+library(spp)
+
 # Read ChIP tagAlign/BAM files
 cat("Reading ChIP tagAlign/BAM file",iparams$chip.file,"\n",file=stdout())
 chip.data <- read.align(ta.chip.filename)
@@ -690,7 +688,7 @@ if (is.na(iparams$n.nodes)) {
 	cluster.nodes <- NULL
 } else {
 	library(snow)
-	cluster.nodes <- makeCluster(iparams$n.nodes,type="SOCK")
+	cluster.nodes <- makeCluster(iparams$n.nodes, "SOCK")
 }
 
 # #################################    
@@ -728,7 +726,7 @@ peakidx <- which(peakidx==-1) + bw
 if ( is.nan(iparams$ex.range[2]) ) {
 	iparams$ex.range[2] <- chip.data$read.length+10
 }
-peakidx <- peakidx[(cc$x[peakidx] < iparams$ex.range[1]) | (cc$x[peakidx] > iparams$ex.range[2]) ]
+peakidx <- peakidx[(cc$x[peakidx] < iparams$ex.range[1]) | (cc$x[peakidx] > iparams$ex.range[2]) | (cc$x[peakidx] < 0) ]    
 cc <- cc[peakidx,]
 
 # Find max peak position and other peaks within 0.9*max_peakvalue that are further away from maxpeakposition   
@@ -845,7 +843,7 @@ if ( !is.na(iparams$output.npeak.file) || !is.na(iparams$output.rpeak.file) ) {
 	if (is.na(iparams$n.nodes)) {
 		cluster.nodes <- NULL
 	} else {
-		cluster.nodes <- makeCluster(iparams$n.nodes,type="SOCK")
+		cluster.nodes <- makeCluster(iparams$n.nodes, "SOCK")
 	}
 	
 	# Find peaks
@@ -853,7 +851,7 @@ if ( !is.na(iparams$output.npeak.file) || !is.na(iparams$output.rpeak.file) ) {
 	if (!is.na(iparams$npeak)) {
 		iparams$fdr <- 0.99
 	}
-	narrow.peaks <- find.binding.positions(signal.data=chip.data,control.data=control.data,fdr=iparams$fdr,method=spp:::tag.lwcc,whs=crosscorr$whs,cluster=cluster.nodes)
+	narrow.peaks <- find.binding.positions(signal.data=chip.data,control.data=control.data,fdr=iparams$fdr,method=tag.lwcc,whs=crosscorr$whs,cluster=cluster.nodes)
 	if (!is.na(iparams$n.nodes)) {
 		stopCluster(cluster.nodes)
 	}
